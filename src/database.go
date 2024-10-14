@@ -10,5 +10,5 @@ type DataBase interface {
     removeVector(id int) (err error)
 
     findById(id int) (v Vector, err error)
-    findClosest(v Vector, measure Measure, n int) (vectors []Vector, err error)
+    findClosest(v Vector, measure Measure, n int) (results []SearchResult, err error)
 }

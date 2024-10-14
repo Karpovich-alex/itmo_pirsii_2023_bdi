@@ -12,12 +12,3 @@ type DataBase interface {
     findById(id int) (v Vector, err error)
     findClosest(v Vector, measure Measure, n int) (vectors []Vector, err error)
 }
-
-type Measure interface {
-    calc(v1 Vector, v2 Vector) (dist float64, err error)
-}
-
-type Vector struct {
-    []float64
-}
-

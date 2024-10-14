@@ -1,9 +1,24 @@
+package main
+
 type Vector struct {
-    []float64
+	ID        int
+	Embedding []float64
 }
 
 type SearchResult struct {
 	ID       int
 	Distance float64
 	Vector   Vector
+}
+
+type IndexStruct struct {
+	ID       int
+	VectorId int
+	Result   []float64
+}
+
+type DataBaseStruct struct {
+	ID     int
+	Vector []Vector
+	Index  []IndexStruct
 }

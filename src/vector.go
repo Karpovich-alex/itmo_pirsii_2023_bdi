@@ -12,7 +12,13 @@ type SearchResult struct {
 }
 
 type IndexStruct struct {
+	ID       int
+	VectorId int
+	Result   []float64
+}
+
+type DataBaseStruct struct {
 	ID     int
-	Vector Vector
-	Result []float64
+	Vector []Vector
+	Index  []IndexStruct
 }

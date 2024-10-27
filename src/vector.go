@@ -16,9 +16,3 @@ type IndexStruct struct {
 	VectorId int
 	Result   []float64
 }
-
-type DataBaseStruct struct {
-	ID     int
-	Vector []Vector
-	Index  []IndexStruct
-}

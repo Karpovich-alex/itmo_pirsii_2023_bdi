@@ -5,14 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 )
 
 // интерфейс коллекции
 type DataBase interface {
 	init(name string, path string, databasestruct DataBaseStruct) (err error)
 
-	//load(path string, dbs DataBaseStruct) (err error)
-	// flush() (err error)
+	load(name string, dbs DataBaseStruct) (err error)
+	flush(name string, dbs DataBaseStruct) (err error)
 
 	// addVector(id int, v Vector) (err error)
 	// setVector(id int, v Vector) (err error)
@@ -24,10 +26,10 @@ type DataBase interface {
 
 // одна коллекция в БД
 type DataBaseCollection struct {
-	ID   int
-	Name string
-	Path string
-	// Vector []Vector
+	ID     int
+	Name   string
+	Path   string
+	Vector []Vector
 	// Index  []IndexStruct
 }
 
@@ -91,9 +93,81 @@ func (db *DataBaseCollection) init(name string, path string, dbs *DataBaseStruct
 	return nil
 }
 
-// func (db DataBaseCollection) load(name string, dbs DataBaseStruct) error {
-// 	return 0
-// }
+func (db *DataBaseCollection) load(name string, dbs *DataBaseStruct) error {
+
+	db_path := dbs.Ref[name]
+
+	file, _ := os.Open(db_path)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		str_emb := strings.Fields(line)
+
+		var float_emb []float64
+		for _, str := range str_emb {
+			if value, err := strconv.ParseFloat(str, 64); err == nil {
+				float_emb = append(float_emb, value)
+			} else {
+				return err
+			}
+		}
+
+		vect := new(Vector)
+
+		count := len(db.Vector)
+
+		vect.ID = count + 1
+		vect.Embedding = float_emb
+
+		db.Vector = append(db.Vector, *vect)
+
+	}
+
+	return nil
+
+}
+
+func (db *DataBaseCollection) flush(name string, dbs *DataBaseStruct) error {
+	db_path := dbs.Ref[name]
+
+	if _, err := os.Stat(db_path); err == nil {
+		err := os.Remove(db_path)
+		if err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	file, err := os.Create(db_path)
+	if err != nil {
+		return err
+	}
+
+	writer := bufio.NewWriter(file)
+
+	for _, vect := range db.Vector {
+
+		var str_vect []string
+		for _, v := range vect.Embedding {
+			// Convert float to string with specified format and precision
+			str := strconv.FormatFloat(v, 'f', -1, 64) // 'f' for decimal point notation
+			str_vect = append(str_vect, str)
+		}
+
+		line := strings.Join(str_vect, " ")
+
+		_, err := writer.WriteString(line + "\n") // Append newline character
+		if err != nil {
+			return err
+		}
+	}
+
+	defer file.Close()
+
+	return nil
+}
 
 // удаляем коллекцию из БД
 func (dbs DataBaseStruct) remove(name string) error {
@@ -139,8 +213,6 @@ func main() {
 
 	dbs := new(DataBaseStruct)
 	dbs.init("./database/db_info.txt")
-
-	fmt.Println(*dbs)
 
 	db := new(DataBaseCollection)
 	fmt.Println(db.init("test", "./database", dbs))

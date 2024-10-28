@@ -1,9 +1,15 @@
 package index
 
 import (
+	"bufio"
 	"container/heap"
+	"errors"
+	"fmt"
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/measures"
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
+	"os"
+	"strconv"
+	"strings"
 )
 
 type SearchResult struct {
@@ -23,24 +29,22 @@ func remove(s []*utils.Vector, i int) []*utils.Vector {
 }
 
 type Index interface {
-	create(v utils.Vector) (index IndexStruct, err error)
-	update(id int) (index IndexStruct, err error)
+	AddVector(v *utils.Vector)
+	RemoveVector(id int)
 
-	AddVector(v utils.Vector) (err error)
-	RemoveVector(id int) (err error)
+	Load(path string) (err error)
+	Flush(path string) (err error)
 
-	Load() (err error)
-	Flush() (err error)
-
-	FindClosest(index IndexStruct, measure measures.Measure, n int) (results []SearchResult, err error)
+	FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []SearchResult)
+	FindById(id int) (v *utils.Vector)
 }
 
 type FlatIndex struct {
 	vectors []*utils.Vector
 }
 
-func (index *FlatIndex) AddVector(v utils.Vector) {
-	index.vectors = append(index.vectors, &v)
+func (index *FlatIndex) AddVector(v *utils.Vector) {
+	index.vectors = append(index.vectors, v)
 }
 
 func (index *FlatIndex) RemoveVector(id int) {
@@ -54,11 +58,11 @@ func (index *FlatIndex) RemoveVector(id int) {
 	return
 }
 
-func (index *FlatIndex) FindClosest(v utils.Vector, measure measures.Measure, n int) (results []SearchResult) {
+func (index *FlatIndex) FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []SearchResult) {
 	pq := priorityQueue{}
 
 	for _, va := range index.vectors {
-		dist := measure.Calc(v, *va)
+		dist := measure.Calc(*v, *va)
 		heap.Push(&pq, &queueItem{
 			value:    *va,
 			priority: -dist,
@@ -72,4 +76,95 @@ func (index *FlatIndex) FindClosest(v utils.Vector, measure measures.Measure, n 
 		results = append(results, SearchResult{qi.value, -qi.priority})
 	}
 	return results
+}
+
+func (index *FlatIndex) FindById(id int) (v *utils.Vector, err error) {
+	for _, v := range index.vectors {
+		if v.ID == id {
+			return v, nil
+		}
+	}
+	return nil, errors.New(fmt.Sprintf("Cant find vector with id = %s", id))
+}
+
+func (index *FlatIndex) Load(path string) (err error) {
+
+	file, _ := os.Open(path)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		str_emb := strings.Fields(line)
+		vect_id, err := strconv.Atoi(str_emb[0])
+		if err != nil {
+			return err
+		}
+
+		var float_emb []float64
+		for _, str := range str_emb[1:] {
+			if value, err := strconv.ParseFloat(str, 64); err == nil {
+				float_emb = append(float_emb, value)
+			} else {
+				return err
+			}
+		}
+
+		vect := utils.Vector{vect_id, float_emb}
+		index.AddVector(&vect)
+	}
+
+	err = file.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (index *FlatIndex) Flush(path string) (err error) {
+
+	if _, err := os.Stat(path); err == nil {
+		err := os.Remove(path)
+		if err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	writer := bufio.NewWriter(file)
+
+	for _, vect := range index.vectors {
+
+		var str_vect []string
+		for _, v := range vect.Embedding {
+			// Convert float to string with specified format and precision
+			str := strconv.FormatFloat(v, 'f', -1, 64) // 'f' for decimal point notation
+			str_vect = append(str_vect, str)
+		}
+
+		line := fmt.Sprintf("%d", vect.ID) + "\t" + strings.Join(str_vect, " ")
+
+		_, err := writer.WriteString(line + "\n") // Append newline character
+		if err != nil {
+			return err
+		}
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return err
+	}
+
+	err = file.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -3,6 +3,7 @@ package database
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"strconv"
@@ -13,16 +14,16 @@ import (
 
 // интерфейс коллекции
 type DataBase interface {
-	init(name string, path string, databasestruct DataBaseStruct) (err error)
+	Init(name string, path string, databasestruct DataBaseStruct) (err error)
 
-	load(name string, dbs DataBaseStruct) (err error)
-	flush(name string, dbs DataBaseStruct) (err error)
+	Load(name string, dbs DataBaseStruct) (err error)
+	Flush(name string, dbs DataBaseStruct) (err error)
 
-	addVector(v utils.Vector) (err error)
-	setVector(id int, v utils.Vector) (err error)
-	removeVector(id int) (err error)
+	AddVector(v utils.Vector) (err error)
+	SetVector(id int, v utils.Vector) (err error)
+	RemoveVector(id int) (err error)
 
-	findById(id int) (v utils.Vector, err error)
+	FindById(id int) (v utils.Vector, err error)
 	// findClosest(v utils.Vector, measure Measure, n int) (results []SearchResult, err error)
 }
 
@@ -48,7 +49,7 @@ type DataBaseStructInterface interface {
 	remove(name string) (err error)
 }
 
-func (db *DataBaseCollection) init(name string, path string, dbs *DataBaseStruct) error {
+func (db *DataBaseCollection) Init(name string, path string, dbs *DataBaseStruct) error {
 	info_path, err_path := os.Stat(path)
 	if os.IsNotExist(err_path) {
 		return errors.New("Path doesn't exist!")
@@ -63,15 +64,15 @@ func (db *DataBaseCollection) init(name string, path string, dbs *DataBaseStruct
 				return errors.New("Database with that name already exists!")
 			} else {
 				db.Name = name
-				db.Path = path
+				db.Path = full_path
 				db.ID = dbs.ID_count + 1
 				db.Vector = make([]utils.Vector, 0)
 
 				dbs.ID_count = dbs.ID_count + 1
-				dbs.Ref[name] = path
+				dbs.Ref[name] = full_path
 
 				//Создаем или открываем файл со списком коллекций
-				db_file, err := os.Create(dbs.Path)
+				db_file, err := os.OpenFile(dbs.Path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 				if err != nil {
 					return err
 				}
@@ -96,9 +97,11 @@ func (db *DataBaseCollection) init(name string, path string, dbs *DataBaseStruct
 	return nil
 }
 
-func (db *DataBaseCollection) load(name string, dbs *DataBaseStruct) error {
+func (db *DataBaseCollection) Load(name string, dbs *DataBaseStruct) error {
 
-	db_path := dbs.Ref[name]
+	db_path := dbs.Ref[name] + "/" + name + ".txt"
+
+
 
 	file, _ := os.Open(db_path)
 	scanner := bufio.NewScanner(file)
@@ -126,13 +129,15 @@ func (db *DataBaseCollection) load(name string, dbs *DataBaseStruct) error {
 		db.Vector = append(db.Vector, *vect)
 
 	}
+	defer file.Close()
 
 	return nil
 
 }
 
-func (db *DataBaseCollection) flush(name string, dbs *DataBaseStruct) error {
-	db_path := dbs.Ref[name]
+func (db *DataBaseCollection) Flush(name string, dbs *DataBaseStruct) error {
+	db_path := dbs.Ref[name] + "/" + name + ".txt"
+
 
 	if _, err := os.Stat(db_path); err == nil {
 		err := os.Remove(db_path)
@@ -154,15 +159,19 @@ func (db *DataBaseCollection) flush(name string, dbs *DataBaseStruct) error {
 
 		var str_vect []string
 		for _, v := range vect.Embedding {
-			// Convert float to string with specified format and precision
-			str := strconv.FormatFloat(v, 'f', -1, 64) // 'f' for decimal point notation
+			str := strconv.FormatFloat(v, 'f', -1, 64) 
 			str_vect = append(str_vect, str)
 		}
 
 		line := strings.Join(str_vect, " ")
 
-		_, err := writer.WriteString(line + "\n") // Append newline character
+
+		_, err := writer.WriteString(line + "\n")
 		if err != nil {
+			return err
+		}
+
+		if err := writer.Flush(); err != nil {
 			return err
 		}
 	}
@@ -172,17 +181,17 @@ func (db *DataBaseCollection) flush(name string, dbs *DataBaseStruct) error {
 	return nil
 }
 
-func (db *DataBaseCollection) addVector(v utils.Vector) (err error) {
+func (db *DataBaseCollection) AddVector(v utils.Vector) (err error) {
 	db.Vector = append(db.Vector, v)
 	return nil
 }
 
-func (db *DataBaseCollection) setVector(id int, v utils.Vector) (err error) {
+func (db *DataBaseCollection) SetVector(id int, v utils.Vector) (err error) {
 	db.Vector[id] = v
 	return nil
 }
 
-func (db *DataBaseCollection) removeVector(id int) (err error) {
+func (db *DataBaseCollection) RemoveVector(id int) (err error) {
 	if id < 0 || id > len(db.Vector) {
 		return errors.New("Id is inccorect!")
 	}
@@ -190,7 +199,7 @@ func (db *DataBaseCollection) removeVector(id int) (err error) {
 	return nil
 }
 
-func (db *DataBaseCollection) findById(id int) (res *utils.Vector, err error) {
+func (db *DataBaseCollection) FindById(id int) (res *utils.Vector, err error) {
 	if id < 0 || id > len(db.Vector) {
 		return nil, errors.New("Id is inccorect!")
 	}
@@ -198,15 +207,37 @@ func (db *DataBaseCollection) findById(id int) (res *utils.Vector, err error) {
 }
 
 // удаляем коллекцию из БД
-func (dbs DataBaseStruct) remove(name string) error {
-	db_path := dbs.Ref[name]
+func (dbs *DataBaseStruct) Remove(name string) error {
+	db_path := dbs.Ref[name] + "/" + name + ".txt"
+
 	e := os.Remove(db_path)
+	if e != nil {
+        return e
+    }
+	delete(dbs.Ref, name)
+
+	fmt.Println(dbs.Ref)
+
+	
+	file, err := os.OpenFile("./source/db_info.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+        return err
+    }
+    defer file.Close() 
+
+	for n, p := range dbs.Ref{
+		_, err = file.WriteString(n + " " + p + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
 	return e
 }
 
 // Инициализируем БД
 // Для хранения БД испольуется файл с именами коллекций и путями к ним
-func (dbs *DataBaseStruct) init(path string) error {
+func (dbs *DataBaseStruct) Init(path string) error {
 	dbs.Path = path
 
 	_, err_path := os.Stat(path)
@@ -224,13 +255,17 @@ func (dbs *DataBaseStruct) init(path string) error {
 		dbs.Ref = make(map[string]string)
 
 		file, _ := os.Open(path)
+
 		scanner := bufio.NewScanner(file)
-		scanner.Split(bufio.ScanWords)
 		for scanner.Scan() {
-			name_collection := scanner.Text()
-			path_collection := scanner.Text()
+			line := scanner.Text()
+			str_emb := strings.Fields(line)
+			name_collection := str_emb[0]
+			path_collection := str_emb[1]
 			dbs.Ref[name_collection] = path_collection
+	
 		}
+
 		dbs.ID_count = len(dbs.Ref)
 	}
 

@@ -31,12 +31,14 @@ func remove(s []*utils.Vector, i int) []*utils.Vector {
 type Index interface {
 	AddVector(v *utils.Vector)
 	RemoveVector(id int)
+	UpdateVector(v *utils.Vector) (err error)
 
 	Load(path string) (err error)
 	Flush(path string) (err error)
 
-	FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []SearchResult)
-	FindById(id int) (v *utils.Vector)
+	FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []*SearchResult)
+	FindById(id int) (v *utils.Vector, err error)
+	Len() int
 }
 
 type FlatIndex struct {
@@ -49,8 +51,8 @@ func (index *FlatIndex) AddVector(v *utils.Vector) {
 
 func (index *FlatIndex) RemoveVector(id int) {
 
-	for idx, v := range index.vectors {
-		if v.ID == id {
+	for idx := range index.vectors {
+		if index.vectors[idx].ID == id {
 			index.vectors = remove(index.vectors, idx)
 			return
 		}
@@ -58,13 +60,23 @@ func (index *FlatIndex) RemoveVector(id int) {
 	return
 }
 
-func (index *FlatIndex) FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []SearchResult) {
+func (index *FlatIndex) UpdateVector(v *utils.Vector) (err error) {
+	for idx := range index.vectors {
+		if index.vectors[idx].ID == v.ID {
+			index.vectors[idx] = v
+			return nil
+		}
+	}
+	return errors.New(fmt.Sprintf("Cant find vector with id = %s", v.ID))
+}
+
+func (index *FlatIndex) FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []*SearchResult) {
 	pq := priorityQueue{}
 
-	for _, va := range index.vectors {
-		dist := measure.Calc(*v, *va)
+	for idx := range index.vectors {
+		dist := measure.Calc(*v, *index.vectors[idx])
 		heap.Push(&pq, &queueItem{
-			value:    *va,
+			value:    *index.vectors[idx],
 			priority: -dist,
 		})
 		if pq.Len() > n {
@@ -73,15 +85,17 @@ func (index *FlatIndex) FindClosest(v *utils.Vector, measure measures.Measure, n
 	}
 	for i := pq.Len() - 1; i >= 0; i-- {
 		qi := pq[i]
-		results = append(results, SearchResult{qi.value, -qi.priority})
+		// TODO: Нужно ли делать копии каждого вектора?
+		results = append(results, &SearchResult{qi.value, -qi.priority})
 	}
 	return results
 }
 
 func (index *FlatIndex) FindById(id int) (v *utils.Vector, err error) {
-	for _, v := range index.vectors {
-		if v.ID == id {
-			return v, nil
+	for idx := range index.vectors {
+		if index.vectors[idx].ID == id {
+			v := index.vectors[idx].Copy()
+			return &v, nil
 		}
 	}
 	return nil, errors.New(fmt.Sprintf("Cant find vector with id = %s", id))
@@ -167,4 +181,8 @@ func (index *FlatIndex) Flush(path string) (err error) {
 	}
 
 	return nil
+}
+
+func (index FlatIndex) Len() int {
+	return len(index.vectors)
 }

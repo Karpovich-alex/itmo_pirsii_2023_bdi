@@ -19,7 +19,7 @@ func main() {
 	dbIndex := index.FlatIndex{}
 
 	v1 := utils.Vector{1, []float64{0, 0, 0, 0}}
-	v2 := utils.Vector{2, []float64{0.1, 1, 1, 0.1}}
+	v2 := utils.Vector{2, []float64{0, 1, 1, 0}}
 	v3 := utils.Vector{3, []float64{0, 0, 0, 1}}
 	v4 := utils.Vector{4, []float64{0, 0, 0, 1}}
 	vf := utils.Vector{0, []float64{0, 0, 0, 1}}
@@ -32,10 +32,21 @@ func main() {
 	dbIndex.RemoveVector(4)
 
 	results := dbIndex.FindClosest(&vf, measures.EuclideanDistanceMeasure{}, 3)
-
 	fmt.Println(results)
 
-	err := dbIndex.Flush("./database/index.txt")
+
+	foundVector, err := dbIndex.FindById(1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(foundVector)
+	foundVector.Embedding[0] = 10
+	foundVector.Embedding[1] = 20
+	fmt.Println(foundVector)
+	fmt.Println(dbIndex.FindById(1))
+
+	err = dbIndex.Flush("./src/database/index.txt")
+
 	if err != nil {
 		panic(err)
 	}

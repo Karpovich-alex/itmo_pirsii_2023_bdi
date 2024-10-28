@@ -8,8 +8,6 @@ import (
 	
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/index"
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/measures"
-	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
-	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/database"
 )
 
 func main() {

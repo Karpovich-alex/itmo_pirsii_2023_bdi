@@ -1,0 +1,40 @@
+package index
+
+import "github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
+
+type queueItem struct {
+	value    utils.Vector
+	index    int
+	priority float64
+}
+
+type priorityQueue []*queueItem
+
+func (pq priorityQueue) Len() int { return len(pq) }
+
+func (pq priorityQueue) Less(i, j int) bool {
+	return pq[i].priority < pq[j].priority
+}
+
+func (pq priorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+
+func (pq *priorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item, _ := x.(*queueItem)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq *priorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.index = -1
+	*pq = old[0 : n-1]
+
+	return item
+}

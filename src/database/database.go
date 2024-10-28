@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/index"
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/measures"
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
 )
 
@@ -23,8 +25,11 @@ type DataBase interface {
 	SetVector(id int, v utils.Vector) (err error)
 	RemoveVector(id int) (err error)
 
-	FindById(id int) (v utils.Vector, err error)
-	// findClosest(v utils.Vector, measure Measure, n int) (results []SearchResult, err error)
+	//FindById(id int) (v utils.Vector, err error)
+	//FindClosest(v utils.Vector, measure measures.Measure, n int) (results []*index.SearchResult, err error)
+
+	FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []*index.SearchResult)
+	FindById(id int) (v *utils.Vector, err error)
 }
 
 // одна коллекция в БД
@@ -33,7 +38,7 @@ type DataBaseCollection struct {
 	Name   string
 	Path   string
 	Vector []utils.Vector
-	// Index  []IndexStruct
+	Index  index.FlatIndex
 }
 
 // собственно сама БД
@@ -60,16 +65,10 @@ func (db *DataBaseCollection) Init(name string, path string, dbs *DataBaseStruct
 			full_path := path + "/" + name + ".txt"
 
 			_, err_file := os.Stat(full_path)
-			if !os.IsNotExist(err_file) {
-				return errors.New("Database with that name already exists!")
-			} else {
-				db.Name = name
-				db.Path = full_path
-				db.ID = dbs.ID_count + 1
-				db.Vector = make([]utils.Vector, 0)
+			if os.IsNotExist(err_file) {
 
 				dbs.ID_count = dbs.ID_count + 1
-				dbs.Ref[name] = full_path
+				dbs.Ref[name] = path
 
 				//Создаем или открываем файл со списком коллекций
 				db_file, err := os.OpenFile(dbs.Path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
@@ -92,6 +91,11 @@ func (db *DataBaseCollection) Init(name string, path string, dbs *DataBaseStruct
 				defer file.Close()
 
 			}
+			db.Name = name
+			db.Path = path
+			db.ID = dbs.ID_count + 1
+			db.Vector = make([]utils.Vector, 0)
+			db.Index = index.FlatIndex{}
 		}
 	}
 	return nil
@@ -100,8 +104,6 @@ func (db *DataBaseCollection) Init(name string, path string, dbs *DataBaseStruct
 func (db *DataBaseCollection) Load(name string, dbs *DataBaseStruct) error {
 
 	db_path := dbs.Ref[name] + "/" + name + ".txt"
-
-
 
 	file, _ := os.Open(db_path)
 	scanner := bufio.NewScanner(file)
@@ -131,13 +133,17 @@ func (db *DataBaseCollection) Load(name string, dbs *DataBaseStruct) error {
 	}
 	defer file.Close()
 
+	err := db.Index.Load("./database/index.txt")
+	if err != nil {
+		panic(err)
+	}
+
 	return nil
 
 }
 
 func (db *DataBaseCollection) Flush(name string, dbs *DataBaseStruct) error {
 	db_path := dbs.Ref[name] + "/" + name + ".txt"
-
 
 	if _, err := os.Stat(db_path); err == nil {
 		err := os.Remove(db_path)
@@ -159,12 +165,11 @@ func (db *DataBaseCollection) Flush(name string, dbs *DataBaseStruct) error {
 
 		var str_vect []string
 		for _, v := range vect.Embedding {
-			str := strconv.FormatFloat(v, 'f', -1, 64) 
+			str := strconv.FormatFloat(v, 'f', -1, 64)
 			str_vect = append(str_vect, str)
 		}
 
 		line := strings.Join(str_vect, " ")
-
 
 		_, err := writer.WriteString(line + "\n")
 		if err != nil {
@@ -174,6 +179,11 @@ func (db *DataBaseCollection) Flush(name string, dbs *DataBaseStruct) error {
 		if err := writer.Flush(); err != nil {
 			return err
 		}
+
+		err = db.Index.Flush("./database/index.txt")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	defer file.Close()
@@ -182,7 +192,10 @@ func (db *DataBaseCollection) Flush(name string, dbs *DataBaseStruct) error {
 }
 
 func (db *DataBaseCollection) AddVector(v utils.Vector) (err error) {
+
 	db.Vector = append(db.Vector, v)
+	db.Index.AddVector(&v)
+
 	return nil
 }
 
@@ -196,14 +209,17 @@ func (db *DataBaseCollection) RemoveVector(id int) (err error) {
 		return errors.New("Id is inccorect!")
 	}
 	db.Vector = slices.Delete(db.Vector, id, id+1)
+
+	db.Index.RemoveVector(id)
 	return nil
 }
 
-func (db *DataBaseCollection) FindById(id int) (res *utils.Vector, err error) {
-	if id < 0 || id > len(db.Vector) {
-		return nil, errors.New("Id is inccorect!")
-	}
-	return &db.Vector[id], nil
+func (db *DataBaseCollection) FindById(id int) (v *utils.Vector, err error) {
+	return db.Index.FindById(id)
+}
+
+func (db *DataBaseCollection) FindClosest(v *utils.Vector, measure measures.Measure, n int) (results []*index.SearchResult) {
+	return db.Index.FindClosest(v, measure, n)
 }
 
 // удаляем коллекцию из БД
@@ -212,20 +228,19 @@ func (dbs *DataBaseStruct) Remove(name string) error {
 
 	e := os.Remove(db_path)
 	if e != nil {
-        return e
-    }
+		return e
+	}
 	delete(dbs.Ref, name)
 
 	fmt.Println(dbs.Ref)
 
-	
 	file, err := os.OpenFile("./source/db_info.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-        return err
-    }
-    defer file.Close() 
+		return err
+	}
+	defer file.Close()
 
-	for n, p := range dbs.Ref{
+	for n, p := range dbs.Ref {
 		_, err = file.WriteString(n + " " + p + "\n")
 		if err != nil {
 			return err
@@ -263,7 +278,7 @@ func (dbs *DataBaseStruct) Init(path string) error {
 			name_collection := str_emb[0]
 			path_collection := str_emb[1]
 			dbs.Ref[name_collection] = path_collection
-	
+
 		}
 
 		dbs.ID_count = len(dbs.Ref)

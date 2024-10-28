@@ -5,11 +5,12 @@ import (
 	"container/heap"
 	"errors"
 	"fmt"
-	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/measures"
-	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/measures"
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
 )
 
 type SearchResult struct {
@@ -43,6 +44,10 @@ type Index interface {
 
 type FlatIndex struct {
 	vectors []*utils.Vector
+}
+
+func (index *FlatIndex) GetVectors() []*utils.Vector {
+	return index.vectors
 }
 
 func (index *FlatIndex) AddVector(v *utils.Vector) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -16,11 +17,11 @@ type DataBase interface {
 	load(name string, dbs DataBaseStruct) (err error)
 	flush(name string, dbs DataBaseStruct) (err error)
 
-	// addVector(id int, v Vector) (err error)
-	// setVector(id int, v Vector) (err error)
-	// removeVector(id int) (err error)
+	addVector(v Vector) (err error)
+	setVector(id int, v Vector) (err error)
+	removeVector(id int) (err error)
 
-	// findById(id int) (v Vector, err error)
+	findById(id int) (v Vector, err error)
 	// findClosest(v Vector, measure Measure, n int) (results []SearchResult, err error)
 }
 
@@ -63,6 +64,7 @@ func (db *DataBaseCollection) init(name string, path string, dbs *DataBaseStruct
 				db.Name = name
 				db.Path = path
 				db.ID = dbs.ID_count + 1
+				db.Vector = make([]Vector, 0)
 
 				dbs.ID_count = dbs.ID_count + 1
 				dbs.Ref[name] = path
@@ -167,6 +169,31 @@ func (db *DataBaseCollection) flush(name string, dbs *DataBaseStruct) error {
 	defer file.Close()
 
 	return nil
+}
+
+func (db *DataBaseCollection) addVector(v Vector) (err error) {
+	db.Vector = append(db.Vector, v)
+	return nil
+}
+
+func (db *DataBaseCollection) setVector(id int, v Vector) (err error) {
+	db.Vector[id] = v
+	return nil
+}
+
+func (db *DataBaseCollection) removeVector(id int) (err error) {
+	if id < 0 || id > len(db.Vector) {
+		return errors.New("Id is inccorect!")
+	}
+	db.Vector = slices.Delete(db.Vector, id, id+1)
+	return nil
+}
+
+func (db *DataBaseCollection) findById(id int) (res *Vector, err error) {
+	if id < 0 || id > len(db.Vector) {
+		return nil, errors.New("Id is inccorect!")
+	}
+	return &db.Vector[id], nil
 }
 
 // удаляем коллекцию из БД

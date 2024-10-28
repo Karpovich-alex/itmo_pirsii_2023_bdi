@@ -46,6 +46,8 @@ type FlatIndex struct {
 	vectors []*utils.Vector
 }
 
+func (index *FlatIndex) GetName() string { return "FlatIndex" }
+
 func (index *FlatIndex) GetVectors() []*utils.Vector {
 	return index.vectors
 }

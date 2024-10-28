@@ -1,14 +1,14 @@
-package main
+package database
 
 import (
 	"bufio"
 	"errors"
-	"fmt"
-	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
 )
 
 // интерфейс коллекции
@@ -235,14 +235,4 @@ func (dbs *DataBaseStruct) init(path string) error {
 	}
 
 	return nil
-}
-
-func main() {
-
-	dbs := new(DataBaseStruct)
-	dbs.init("./src/database/db_info.txt")
-
-	db := new(DataBaseCollection)
-	fmt.Println(db.init("test", "./database", dbs))
-
 }

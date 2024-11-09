@@ -2,13 +2,21 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/database"
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/measures"
 	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/utils"
 
-	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/database"
+	"github.com/karpovich-alex/itmo_pirsii_2023_bdi/src/api"
+
+	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
-func main() {
+
+
+func test_lab2() {
 	v1 := &utils.Vector{1, []float64{0, 0, 0, 0}}
 	v2 := &utils.Vector{2, []float64{0, 1, 1, 0}}
 	v3 := &utils.Vector{3, []float64{0, 0, 0, 1}}
@@ -76,10 +84,29 @@ func main() {
 	if err != nil {
 		return
 	}
-
 	// Обновление вектора
-	//v0 := utils.Vector{1, []float64{5, 5, 5, 5}}
-	//db.SetVector(2, v0)
-	//fmt.Println(db)
+	// v0 := utils.Vector{1, []float64{5, 5, 5, 5}}
+	// db.SetVector(2, v0)
+	fmt.Println(dbs)
+}
+
+func main() {
+
+	router := mux.NewRouter()
+
+	router.HandleFunc("/api/database", api.CreateOrGetDB).Methods("POST")
+
+	router.HandleFunc("/api/collection", api.CreateCollection).Methods("POST")
+	router.HandleFunc("/api/collection/{name}", api.LoadCollection).Methods("GET")
+	router.HandleFunc("/api/collection/{name}", api.FlushCollection).Methods("PUT")
+	router.HandleFunc("/api/collection/{name}", api.DeleteCollection).Methods("DELETE")
+
+	router.HandleFunc("/api/vector/{name}", api.AddVector).Methods("POST")
+	router.HandleFunc("/api/vector/{name}/{id}", api.GetVector).Methods("GET")
+	router.HandleFunc("/api/vector/{name}", api.UpdateVector).Methods("PUT")
+	router.HandleFunc("/api/vector/{name}/{id}", api.RemoveVector).Methods("DELETE")
+	router.HandleFunc("/api/vector/{name}/{measure}", api.GetClosest).Methods("POST")
+
+	http.ListenAndServe(":8000", router)
 
 }

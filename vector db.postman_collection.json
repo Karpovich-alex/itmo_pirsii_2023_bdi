@@ -1,0 +1,184 @@
+{
+	"info": {
+		"_postman_id": "61ea04d8-6a16-4b90-8926-3775fd970260",
+		"name": "vector db",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "39618956"
+	},
+	"item": [
+		{
+			"name": "GetOrCreateDB",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/database?name=test_db&path=./data",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"database"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "test_db"
+						},
+						{
+							"key": "path",
+							"value": "./data"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CreateCollection",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/collection?name=test_col",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"collection"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "test_col"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DeleteCollection",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "http://localhost:8000/api/collection/test_col"
+			},
+			"response": []
+		},
+		{
+			"name": "LoadCollection",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:8000/api/collection/test_col"
+			},
+			"response": []
+		},
+		{
+			"name": "AddVector",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\": 2,\r\n    \"vector\": [1, 3, 4, 5]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:8000/api/vector/test_col"
+			},
+			"response": []
+		},
+		{
+			"name": "FlushCollection",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": "http://localhost:8000/api/collection/test_col"
+			},
+			"response": []
+		},
+		{
+			"name": "RemoveVector",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "http://localhost:8000/api/vector/test_col/1"
+			},
+			"response": []
+		},
+		{
+			"name": "GetVector",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:8000/api/vector/test_col/2"
+			},
+			"response": []
+		},
+		{
+			"name": "GetClosest",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\": 1,\r\n    \"vector\": [0, 0, 0, 0]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/vector/test_col/euclidean?n=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vector",
+						"test_col",
+						"euclidean"
+					],
+					"query": [
+						{
+							"key": "n",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "UpdateVector",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\": 2,\r\n    \"vector\": [4, 4, 4, 4]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:8000/api/vector/test_col"
+			},
+			"response": []
+		}
+	]
+}

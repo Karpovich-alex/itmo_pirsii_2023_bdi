@@ -223,6 +223,7 @@ func (dbs *DataBaseStruct) FindById(collectionName string, id int) (v *utils.Vec
 		// Коллекция уже загружена
 		return nil, errors.New(fmt.Sprintf("Collection %s doesnt load", collectionName))
 	}
+	fmt.Println(collection)
 	return collection.Index.FindById(id)
 }
 

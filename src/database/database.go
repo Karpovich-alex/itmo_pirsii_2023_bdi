@@ -31,6 +31,32 @@ type IDataBase interface {
 	FindById(collectionName string, id int) (v *utils.Vector, err error)
 }
 
+type DataBase struct {
+	Path  string
+	bases map[string]*DataBaseStruct
+}
+
+func (db *DataBase) NewDataBase(name string) (dataBase *DataBaseStruct, err error) {
+	dataBase = &DataBaseStruct{name, db.Path, make(map[string]string), make(map[string]*Collection), 0}
+	err = dataBase.Init()
+	if err != nil {
+		return nil, err
+	}
+	if db.bases == nil {
+		db.bases = map[string]*DataBaseStruct{}
+	}
+	db.bases[name] = dataBase
+	return dataBase, nil
+}
+
+func (db *DataBase) Get(name string) (dbs *DataBaseStruct, err error) {
+	dbs, ok := db.bases[name]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("Structure %s doesnt exist", name))
+	}
+	return dbs, nil
+}
+
 func NewDataBase(name string, path string) (dataBase *DataBaseStruct, err error) {
 	dataBase = &DataBaseStruct{name, path, make(map[string]string), make(map[string]*Collection), 0}
 	err = dataBase.Init()
@@ -177,6 +203,7 @@ func (dbs *DataBaseStruct) Flush(collectionName string) (err error) {
 		return err
 	}
 	err = collection.Flush()
+	delete(dbs.LoadedCollections, collectionName)
 	return err
 }
 

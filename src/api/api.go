@@ -40,6 +40,7 @@ func CreateOrGetDB(w http.ResponseWriter, r *http.Request) {
 func CreateCollection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := r.URL.Query().Get("name")
+	dim := r.URL.Query().Get("dim")
 
 	ctx := r.Context()
 	db := ctx.Value("db").(*database.DataBase)
@@ -50,7 +51,13 @@ func CreateCollection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dbs.AddCollection(name)
+	dim_int, err := strconv.Atoi(dim)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = dbs.AddCollection(name, dim_int)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

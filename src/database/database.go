@@ -236,17 +236,18 @@ func (dbs *DataBaseStruct) Load(collectionName string) (err error) {
 	return nil
 }
 
-func (dbs *DataBaseStruct) Flush(collectionName string) (err error) {
-	//dbs.lm.Lock()
-	//defer dbs.lm.Unlock()
+func (dbs *DataBaseStruct) Flush(collectionName string) (err error, vects []*utils.Vector) {
+	// dbs.lm.Lock()
+	// defer dbs.lm.Unlock()
 
 	collection, err := dbs.getLoadedCollection(collectionName)
 	if err != nil {
-		return err
+		return err, nil
 	}
 	err = collection.Flush()
+	vects = collection.Index.GetVectors()
 	delete(dbs.LoadedCollections, collectionName)
-	return err
+	return err, vects
 }
 
 func (dbs *DataBaseStruct) AddVector(collectionName string, v *utils.Vector) error {
